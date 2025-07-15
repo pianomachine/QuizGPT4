@@ -82,6 +82,16 @@ export default function ChatInterface({
                 setIsTyping(true);
                 setCurrentResponseText(data.message.content);
 
+                // Update conversation title if it was changed
+                if (data.conversation_title) {
+                    const updatedConversations = conversations.map(conv => 
+                        conv.id == currentConversationId 
+                            ? { ...conv, title: data.conversation_title }
+                            : conv
+                    );
+                    onConversationsChange(updatedConversations);
+                }
+
                 // Refresh conversations after message is sent
                 await refreshConversations();
             } else {

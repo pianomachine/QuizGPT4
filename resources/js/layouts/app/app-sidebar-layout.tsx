@@ -13,6 +13,7 @@ interface AppSidebarLayoutProps {
         onConversationSelect: (id: string | number) => void;
         onNewConversation: () => void;
         onDeleteConversation: (id: string | number) => void;
+        onUpdateConversationTitle: (id: string | number, title: string) => void;
     };
 }
 

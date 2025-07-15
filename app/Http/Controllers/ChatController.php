@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class ChatController extends Controller
 {
@@ -40,6 +41,12 @@ class ChatController extends Controller
                 'role' => 'user',
             ]);
 
+            // Generate title from first message if conversation title is empty or default
+            $isFirstMessage = $conversation->messages()->count() === 1; // We just added the user message
+            if ($isFirstMessage && (empty($conversation->title) || $conversation->title === 'New Conversation' || $conversation->title === 'New Chat')) {
+                $this->generateConversationTitle($conversation, $message);
+            }
+
             // Get conversation history from database
             $conversationHistory = $conversation->messages()
                 ->orderBy('created_at', 'asc')
@@ -68,6 +75,7 @@ class ChatController extends Controller
                     'role' => 'assistant',
                     'timestamp' => $assistantMessage->created_at->toISOString(),
                 ],
+                'conversation_title' => $conversation->fresh()->title,
             ]);
         } catch (\Exception $e) {
             Log::error('Chat error: ' . $e->getMessage());
@@ -92,6 +100,7 @@ class ChatController extends Controller
                 ],
                 'fallback' => true,
                 'error_message' => $e->getMessage(),
+                'conversation_title' => $conversation->fresh()->title,
             ]);
         }
     }
@@ -204,6 +213,31 @@ class ChatController extends Controller
         return '🚧 I apologize, but I\'m currently experiencing technical difficulties with the OpenAI API and cannot provide my usual intelligent responses. This is a basic fallback message. Please try again later when the AI service is restored. Thank you for your patience!';
     }
 
+    private function generateConversationTitle(Conversation $conversation, string $message): void
+    {
+        // Generate a title from the first message (max 50 characters)
+        $title = $this->generateTitleFromMessage($message);
+        
+        // Update the conversation with the generated title
+        $conversation->update(['title' => $title]);
+    }
+
+    private function generateTitleFromMessage(string $message): string
+    {
+        // Clean the message and limit to 50 characters
+        $title = trim($message);
+        
+        // Remove excessive whitespace
+        $title = preg_replace('/\s+/', ' ', $title);
+        
+        // Limit to 50 characters
+        if (strlen($title) > 50) {
+            $title = substr($title, 0, 47) . '...';
+        }
+        
+        return $title ?: 'New Chat';
+    }
+
     public function getConversations(Request $request): JsonResponse
     {
         $conversations = Auth::user()->conversations()
@@ -232,15 +266,63 @@ class ChatController extends Controller
         ]);
     }
 
+    public function getConversation(Request $request, int $id): JsonResponse
+    {
+        $conversation = Conversation::with('messages')
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$conversation) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Conversation not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'conversation' => [
+                'id' => $conversation->id,
+                'title' => $conversation->title,
+                'created_at' => $conversation->created_at->toISOString(),
+                'updated_at' => $conversation->updated_at->toISOString(),
+                'messages' => $conversation->messages->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'content' => $message->content,
+                        'role' => $message->role,
+                        'timestamp' => $message->created_at->toISOString(),
+                    ];
+                }),
+            ],
+        ]);
+    }
+
+    public function showConversation(Request $request, int $conversation_id)
+    {
+        $conversation = Conversation::where('id', $conversation_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$conversation) {
+            return redirect()->route('dashboard')->with('error', 'Conversation not found');
+        }
+
+        return Inertia::render('dashboard', [
+            'conversation_id' => $conversation_id,
+        ]);
+    }
+
     public function createConversation(Request $request): JsonResponse
     {
         $request->validate([
-            'title' => 'required|string|max:100',
+            'title' => 'nullable|string|max:100',
         ]);
 
         $conversation = Conversation::create([
             'user_id' => Auth::id(),
-            'title' => $request->input('title'),
+            'title' => $request->input('title', 'New Chat'),
         ]);
 
         return response()->json([
@@ -251,6 +333,36 @@ class ChatController extends Controller
                 'created_at' => $conversation->created_at->toISOString(),
                 'updated_at' => $conversation->updated_at->toISOString(),
                 'messages' => [],
+            ],
+        ]);
+    }
+
+    public function updateConversationTitle(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'title' => 'required|string|max:100',
+        ]);
+
+        $conversation = Conversation::findOrFail($id);
+        
+        // Check if user owns this conversation
+        if ($conversation->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized',
+            ], 403);
+        }
+
+        $conversation->update([
+            'title' => $request->input('title'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'conversation' => [
+                'id' => $conversation->id,
+                'title' => $conversation->title,
+                'updated_at' => $conversation->updated_at->toISOString(),
             ],
         ]);
     }

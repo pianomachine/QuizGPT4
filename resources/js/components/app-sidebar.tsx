@@ -36,6 +36,7 @@ interface AppSidebarProps {
         onConversationSelect: (id: string | number) => void;
         onNewConversation: () => void;
         onDeleteConversation: (id: string | number) => void;
+        onUpdateConversationTitle: (id: string | number, title: string) => void;
     };
 }
 
@@ -63,6 +64,7 @@ export function AppSidebar({ chatProps }: AppSidebarProps) {
                         onConversationSelect={chatProps.onConversationSelect}
                         onNewConversation={chatProps.onNewConversation}
                         onDeleteConversation={chatProps.onDeleteConversation}
+                        onUpdateConversationTitle={chatProps.onUpdateConversationTitle}
                     />
                 )}
             </SidebarContent>
