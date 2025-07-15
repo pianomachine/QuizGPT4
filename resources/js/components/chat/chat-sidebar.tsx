@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { MessageSquare, Edit3 } from 'lucide-react';
+import { MessageSquare, Edit3, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Message {
     id: string;
@@ -63,7 +64,7 @@ export function ChatSidebar({
     };
 
     return (
-        <SidebarGroup>
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>Chat</SidebarGroupLabel>
             <SidebarGroupContent>
                 <SidebarMenu>
@@ -105,26 +106,34 @@ export function ChatSidebar({
                                     </SidebarMenuButton>
                                 )}
                                 <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleStartEdit(conversation);
-                                        }}
-                                        className="p-1 hover:text-blue-500 transition-colors"
-                                        title="Edit title"
-                                    >
-                                        <Edit3 className="h-3 w-3" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDeleteConversation(conversation.id);
-                                        }}
-                                        className="p-1 hover:text-red-500 transition-colors"
-                                        title="Delete conversation"
-                                    >
-                                        ×
-                                    </button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem 
+                                                onClick={() => handleStartEdit(conversation)}
+                                                className="gap-2"
+                                            >
+                                                <Edit3 className="h-4 w-4" />
+                                                Edit title
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => onDeleteConversation(conversation.id)}
+                                                className="gap-2 text-red-600 hover:text-red-700"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                                Delete conversation
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
                         </SidebarMenuItem>

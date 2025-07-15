@@ -151,40 +151,13 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
         });
     };
 
-    const handleNewConversation = async () => {
-        try {
-            const response = await fetch('/api/chat/conversations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                },
-                body: JSON.stringify({
-                    title: 'New Chat'
-                })
-            });
-
-            const data = await response.json();
-            
-            if (data.success) {
-                const newConversation: Conversation = {
-                    id: data.conversation.id,
-                    title: data.conversation.title,
-                    messages: []
-                };
-                
-                setConversations(prev => [newConversation, ...prev]);
-                setCurrentConversationId(newConversation.id);
-                
-                // Immediately navigate to the new conversation URL
-                router.visit(`/chat/${newConversation.id}`, { 
-                    preserveState: true, 
-                    replace: true 
-                });
-            }
-        } catch (error) {
-            console.error('Error creating conversation:', error);
-        }
+    const handleNewConversation = () => {
+        // Simply set current conversation to empty and navigate to dashboard
+        setCurrentConversationId('');
+        router.visit('/dashboard', { 
+            preserveState: true, 
+            replace: true 
+        });
     };
 
     const handleDeleteConversation = async (id: string | number) => {
@@ -295,6 +268,7 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
                         currentConversationId={currentConversationId}
                         onConversationsChange={setConversations}
                         onCurrentConversationChange={setCurrentConversationId}
+                        onNewConversation={handleNewConversation}
                     />
                 </div>
             </div>

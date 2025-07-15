@@ -25,19 +25,22 @@ interface ChatInterfaceProps {
     currentConversationId: string | number;
     onConversationsChange: (conversations: Conversation[]) => void;
     onCurrentConversationChange: (id: string | number) => void;
+    onNewConversation: () => void;
 }
 
 export default function ChatInterface({ 
     conversations, 
     currentConversationId, 
     onConversationsChange, 
-    onCurrentConversationChange 
+    onCurrentConversationChange,
+    onNewConversation 
 }: ChatInterfaceProps) {
     const [inputMessage, setInputMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const [currentResponseText, setCurrentResponseText] = useState('');
     const [showQuizModal, setShowQuizModal] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,9 +59,52 @@ export default function ChatInterface({
 
         const messageToSend = inputMessage;
         setInputMessage('');
+        
+        // Start transition animation for new conversations
+        const isNewConversation = !currentConversationId;
+        if (isNewConversation) {
+            setIsTransitioning(true);
+            // Small delay to show the transition effect
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
         setIsThinking(true);
 
         try {
+            // If no current conversation, create one first
+            let conversationId = currentConversationId;
+            if (!conversationId) {
+                const createResponse = await fetch('/api/chat/conversations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({
+                        title: 'New Chat'
+                    })
+                });
+
+                const createData = await createResponse.json();
+                
+                if (createData.success) {
+                    conversationId = createData.conversation.id;
+                    const newConversation: Conversation = {
+                        id: createData.conversation.id,
+                        title: createData.conversation.title,
+                        messages: []
+                    };
+                    
+                    onConversationsChange(prev => [newConversation, ...prev]);
+                    onCurrentConversationChange(conversationId);
+                    
+                    // Update URL without page reload - more seamless
+                    window.history.replaceState({}, '', `/chat/${conversationId}`);
+                } else {
+                    throw new Error('Failed to create conversation');
+                }
+            }
+
             const response = await fetch('/api/chat/send', {
                 method: 'POST',
                 headers: {
@@ -67,7 +113,7 @@ export default function ChatInterface({
                 },
                 body: JSON.stringify({
                     message: messageToSend,
-                    conversation_id: currentConversationId
+                    conversation_id: conversationId
                 })
             });
 
@@ -87,7 +133,7 @@ export default function ChatInterface({
                 // Update conversation title if it was changed
                 if (data.conversation_title) {
                     const updatedConversations = conversations.map(conv => 
-                        conv.id == currentConversationId 
+                        conv.id == conversationId 
                             ? { ...conv, title: data.conversation_title }
                             : conv
                     );
@@ -102,6 +148,10 @@ export default function ChatInterface({
         } catch (error) {
             console.error('Error sending message:', error);
             setIsThinking(false);
+            setIsTransitioning(false);
+        } finally {
+            // Reset transition state
+            setIsTransitioning(false);
         }
     };
 
@@ -161,84 +211,126 @@ export default function ChatInterface({
                     Hidden Quiz Button
                 </Button>
                 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {currentConversation?.messages.map((message, index) => (
-                        <div
-                            key={message.id}
-                            className={`flex gap-3 ${
-                                message.role === 'user' ? 'justify-end' : 'justify-start'
-                            }`}
-                        >
-                            {message.role === 'assistant' && (
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <AvatarFallback>
-                                        <Bot className="h-4 w-4" />
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
-                            
-                            <div
-                                className={`max-w-[70%] rounded-lg p-3 ${
-                                    message.role === 'user'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
-                                }`}
-                            >
-                                <p className="text-sm whitespace-pre-wrap">
-                                    {message.role === 'assistant' && 
-                                     index === currentConversation.messages.length - 1 && 
-                                     isTyping && 
-                                     currentResponseText ? (
-                                        <TypingAnimation 
-                                            text={currentResponseText} 
-                                            onComplete={handleTypingComplete} 
-                                        />
-                                    ) : (
-                                        message.content
+                {/* Messages or Center Input */}
+                {currentConversation?.messages.length > 0 && !isTransitioning ? (
+                    <>
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {currentConversation?.messages.map((message, index) => (
+                                <div
+                                    key={message.id}
+                                    className={`flex gap-3 ${
+                                        message.role === 'user' ? 'justify-end' : 'justify-start'
+                                    }`}
+                                >
+                                    {message.role === 'assistant' && (
+                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                            <AvatarFallback>
+                                                <Bot className="h-4 w-4" />
+                                            </AvatarFallback>
+                                        </Avatar>
                                     )}
-                                </p>
-                                <span className="text-xs opacity-70 mt-1 block">
-                                    {message.timestamp.toLocaleTimeString()}
-                                </span>
-                            </div>
+                                    
+                                    <div
+                                        className={`max-w-[70%] rounded-lg p-3 ${
+                                            message.role === 'user'
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-muted'
+                                        }`}
+                                    >
+                                        <p className="text-sm whitespace-pre-wrap">
+                                            {message.role === 'assistant' && 
+                                             index === currentConversation.messages.length - 1 && 
+                                             isTyping && 
+                                             currentResponseText ? (
+                                                <TypingAnimation 
+                                                    text={currentResponseText} 
+                                                    onComplete={handleTypingComplete} 
+                                                />
+                                            ) : (
+                                                message.content
+                                            )}
+                                        </p>
+                                        <span className="text-xs opacity-70 mt-1 block">
+                                            {message.timestamp.toLocaleTimeString()}
+                                        </span>
+                                    </div>
+                                    
+                                    {message.role === 'user' && (
+                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                            <AvatarFallback>
+                                                <User className="h-4 w-4" />
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    )}
+                                </div>
+                            ))}
                             
-                            {message.role === 'user' && (
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <AvatarFallback>
-                                        <User className="h-4 w-4" />
-                                    </AvatarFallback>
-                                </Avatar>
+                            {isThinking && <ThinkingAnimation />}
+                            
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area - Bottom Position */}
+                        <div className="border-t border-sidebar-border/70 dark:border-sidebar-border p-4 animate-slide-down">
+                            <div className="flex gap-2">
+                                <Input
+                                    ref={inputRef}
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder={isThinking ? "AI is thinking..." : isTyping ? "AI is typing..." : "Type your message..."}
+                                    className="flex-1"
+                                    disabled={isThinking || isTyping}
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    disabled={!inputMessage.trim() || isThinking || isTyping}
+                                    size="icon"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    /* Center Input for New Chat or Transitioning */
+                    <div className="flex-1 flex items-center justify-center p-8">
+                        <div className="w-full max-w-2xl space-y-6">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-semibold mb-2">
+                                    {isTransitioning ? "Starting conversation..." : "Start a new conversation"}
+                                </h2>
+                                <p className="text-muted-foreground">
+                                    {isTransitioning ? "Please wait while we set up your chat" : "Ask me anything to get started"}
+                                </p>
+                            </div>
+                            <div className={`flex gap-2 ${isTransitioning ? 'animate-slide-down' : 'animate-fade-in'}`}>
+                                <Input
+                                    ref={inputRef}
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder={isTransitioning ? "Setting up..." : "Type your message..."}
+                                    className="flex-1"
+                                    disabled={isThinking || isTyping || isTransitioning}
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    disabled={!inputMessage.trim() || isThinking || isTyping || isTransitioning}
+                                    size="icon"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            {isTransitioning && (
+                                <div className="text-center">
+                                    <ThinkingAnimation />
+                                </div>
                             )}
                         </div>
-                    ))}
-                    
-                    {isThinking && <ThinkingAnimation />}
-                    
-                    <div ref={messagesEndRef} />
-                </div>
-
-                {/* Input Area */}
-                <div className="border-t border-sidebar-border/70 dark:border-sidebar-border p-4">
-                    <div className="flex gap-2">
-                        <Input
-                            ref={inputRef}
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder={isThinking ? "AI is thinking..." : isTyping ? "AI is typing..." : "Type your message..."}
-                            className="flex-1"
-                            disabled={isThinking || isTyping}
-                        />
-                        <Button
-                            onClick={handleSendMessage}
-                            disabled={!inputMessage.trim() || isThinking || isTyping}
-                            size="icon"
-                        >
-                            <Send className="h-4 w-4" />
-                        </Button>
                     </div>
-                </div>
+                )}
             </div>
             
             {/* Quiz Generation Modal */}

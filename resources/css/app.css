@@ -157,3 +157,158 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .animate-slide-down {
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* Custom scrollbar styles */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: 2px;
+        opacity: 0.3;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--color-muted-foreground);
+        opacity: 0.5;
+    }
+
+    /* For Firefox */
+    .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-border) transparent;
+    }
+
+    /* Sidebar specific scrollbar */
+    [data-sidebar="content"] {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-sidebar-border) transparent;
+    }
+
+    [data-sidebar="content"]::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    [data-sidebar="content"]::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    [data-sidebar="content"]::-webkit-scrollbar-thumb {
+        background: var(--color-sidebar-border);
+        border-radius: 2px;
+        opacity: 0.3;
+    }
+
+    [data-sidebar="content"]::-webkit-scrollbar-thumb:hover {
+        background: var(--color-sidebar-foreground);
+        opacity: 0.4;
+    }
+
+    /* Sidebar collapsed state fixes */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="header"] {
+        padding: 0.5rem;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="header"] .flex {
+        justify-content: center;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="trigger"] {
+        margin: 0 auto;
+    }
+
+    /* Hide text and secondary elements when collapsed */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="menu-button"] span {
+        display: none;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="group-label"] {
+        display: none;
+    }
+
+    /* Ensure proper icon sizing when collapsed */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="menu-button"] {
+        width: 2rem;
+        height: 2rem;
+        padding: 0.5rem;
+        justify-content: center;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="menu-button"] svg {
+        flex-shrink: 0;
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* Hide entire chat and quiz sections when collapsed - including icons */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="group"]:has([data-sidebar="group-label"]:contains("Chat")) {
+        display: none !important;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="group"]:has([data-sidebar="group-label"]:contains("My Quizzes")) {
+        display: none !important;
+    }
+
+    /* Alternative approach - hide by position (covers all chat and quiz content) */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="content"] > [data-sidebar="group"]:nth-child(2),
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="content"] > [data-sidebar="group"]:nth-child(3) {
+        display: none !important;
+    }
+
+    /* Ensure ChatSidebar and QuizSidebar components are completely hidden */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="content"] > *:not([data-sidebar="group"]:first-child) {
+        display: none !important;
+    }
+
+    /* Footer collapsed styles */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="footer"] [data-sidebar="menu-button"] span {
+        display: none;
+    }
+
+    /* Logo area collapsed */
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="header"] [data-sidebar="menu-button"] span {
+        display: none;
+    }
+
+    .group-data-[collapsible=icon]\/sidebar-wrapper [data-sidebar="header"] [data-sidebar="menu-button"] {
+        width: 2rem;
+        height: 2rem;
+        padding: 0.25rem;
+    }
+}

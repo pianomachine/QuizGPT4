@@ -103,7 +103,7 @@ export function QuizSidebar({ onQuizDeleted }: QuizSidebarProps) {
     };
 
     return (
-        <SidebarGroup>
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>My Quizzes</SidebarGroupLabel>
             <SidebarGroupContent>
                 <SidebarMenu>
