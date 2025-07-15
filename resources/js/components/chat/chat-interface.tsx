@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, User, Bot } from 'lucide-react';
+import { Send, User, Bot, FileText } from 'lucide-react';
 import TypingAnimation from './typing-animation';
 import ThinkingAnimation from './thinking-animation';
+import QuizGenerationModal from './quiz-generation-modal';
 
 interface Message {
     id: string | number;
@@ -36,6 +37,7 @@ export default function ChatInterface({
     const [isTyping, setIsTyping] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const [currentResponseText, setCurrentResponseText] = useState('');
+    const [showQuizModal, setShowQuizModal] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -150,6 +152,15 @@ export default function ChatInterface({
         <div className="flex h-full bg-background">
             {/* Main Chat Area */}
             <div className="flex-1 flex flex-col">
+                {/* Hidden Quiz Generation Button for data attribute */}
+                <Button
+                    data-quiz-modal-trigger
+                    onClick={() => setShowQuizModal(true)}
+                    style={{ display: 'none' }}
+                >
+                    Hidden Quiz Button
+                </Button>
+                
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {currentConversation?.messages.map((message, index) => (
@@ -229,6 +240,14 @@ export default function ChatInterface({
                     </div>
                 </div>
             </div>
+            
+            {/* Quiz Generation Modal */}
+            {showQuizModal && (
+                <QuizGenerationModal
+                    conversationId={currentConversationId}
+                    onClose={() => setShowQuizModal(false)}
+                />
+            )}
         </div>
     );
 }

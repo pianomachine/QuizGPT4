@@ -2,10 +2,11 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { ChatSidebar } from '@/components/chat/chat-sidebar';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { QuizSidebar } from '@/components/quiz/quiz-sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, FileText } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -13,6 +14,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: '/dashboard',
         icon: LayoutGrid,
+    },
+    {
+        title: 'Quizzes',
+        href: '/quizzes',
+        icon: FileText,
     },
 ];
 
@@ -46,11 +52,14 @@ export function AppSidebar({ chatProps }: AppSidebarProps) {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
+                        <div className="flex items-center gap-2 px-2 py-1">
+                            <SidebarTrigger className="-ml-1" />
+                            <SidebarMenuButton size="lg" asChild>
+                                <Link href="/dashboard" prefetch>
+                                    <AppLogo />
+                                </Link>
+                            </SidebarMenuButton>
+                        </div>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
@@ -67,6 +76,7 @@ export function AppSidebar({ chatProps }: AppSidebarProps) {
                         onUpdateConversationTitle={chatProps.onUpdateConversationTitle}
                     />
                 )}
+                <QuizSidebar />
             </SidebarContent>
 
             <SidebarFooter>

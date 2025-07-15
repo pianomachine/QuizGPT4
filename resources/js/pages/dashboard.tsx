@@ -254,16 +254,49 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
         onUpdateConversationTitle: handleUpdateConversationTitle,
     };
 
+    const currentConversation = conversations.find(conv => conv.id == currentConversationId);
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs} chatProps={chatProps}>
+        <AppLayout chatProps={chatProps}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col rounded-xl overflow-hidden">
-                <ChatInterface 
-                    conversations={conversations}
-                    currentConversationId={currentConversationId}
-                    onConversationsChange={setConversations}
-                    onCurrentConversationChange={setCurrentConversationId}
-                />
+            <div className="flex h-full flex-1 flex-col">
+                {/* Conversation Title Header - Topmost Element */}
+                {currentConversation && currentConversation.messages.length > 1 && (
+                    <div className="border-b border-sidebar-border/70 dark:border-sidebar-border p-4 bg-background">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-lg font-semibold">
+                                {currentConversation.title}
+                            </h2>
+                            <button
+                                onClick={() => {
+                                    const chatInterface = document.querySelector('[data-quiz-modal-trigger]');
+                                    if (chatInterface) {
+                                        (chatInterface as HTMLElement).click();
+                                    }
+                                }}
+                                className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 has-[>svg]:px-2.5 gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-text h-4 w-4">
+                                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+                                    <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+                                    <path d="M10 9H8"></path>
+                                    <path d="M16 13H8"></path>
+                                    <path d="M16 17H8"></path>
+                                </svg>
+                                Generate Quiz
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="flex-1 rounded-xl overflow-hidden">
+                    <ChatInterface 
+                        conversations={conversations}
+                        currentConversationId={currentConversationId}
+                        onConversationsChange={setConversations}
+                        onCurrentConversationChange={setCurrentConversationId}
+                    />
+                </div>
             </div>
         </AppLayout>
     );
