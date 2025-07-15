@@ -57,11 +57,22 @@ export default function ChatInterface({
     }, [currentConversation?.messages]);
 
     // Reset animation states when conversation changes
+    const prevConversationId = useRef<string | number>(currentConversationId);
+    
     useEffect(() => {
-        setIsTyping(false);
-        setIsThinking(false);
-        setCurrentResponseText('');
-        setIsTransitioning(false);
+        const previousId = prevConversationId.current;
+        const currentId = currentConversationId;
+        
+        // Only reset states if we're switching between existing conversations
+        // Don't reset if we're going from empty to new conversation (transition flow)
+        if (previousId !== '' && currentId !== '' && previousId !== currentId) {
+            setIsTyping(false);
+            setIsThinking(false);
+            setCurrentResponseText('');
+            setIsTransitioning(false);
+        }
+        
+        prevConversationId.current = currentConversationId;
     }, [currentConversationId]);
 
     const handleSendMessage = async () => {
