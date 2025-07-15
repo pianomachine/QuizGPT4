@@ -13,31 +13,66 @@ use Inertia\Inertia;
 
 class ChatController extends Controller
 {
+    private function cleanUTF8($text)
+    {
+        if (empty($text) || $text === null) {
+            return '';
+        }
+        
+        // Convert to string if it's not already
+        $text = (string) $text;
+        
+        // Check if text is already valid UTF-8
+        if (mb_check_encoding($text, 'UTF-8')) {
+            return $text;
+        }
+        
+        // Try to convert to UTF-8
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        
+        // Use iconv to remove invalid sequences
+        $text = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+        
+        // If iconv fails, try preg_replace to remove invalid UTF-8 sequences
+        if ($text === false) {
+            $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);
+        }
+        
+        return $text ?: '';
+    }
     public function sendMessage(Request $request): JsonResponse
     {
-        $request->validate([
-            'message' => 'required|string|max:2000',
-            'conversation_id' => 'required|integer|exists:conversations,id',
-        ]);
+        try {
+            $request->validate([
+                'message' => 'required|string|max:2000',
+                'conversation_id' => 'required|integer|exists:conversations,id',
+            ]);
 
-        $message = $request->input('message');
-        $conversationId = $request->input('conversation_id');
+            $message = $request->input('message');
+            $conversationId = $request->input('conversation_id');
 
-        $conversation = Conversation::findOrFail($conversationId);
-        
-        // Check if user owns this conversation
-        if ($conversation->user_id !== Auth::id()) {
+            $conversation = Conversation::findOrFail($conversationId);
+            
+            // Check if user owns this conversation
+            if ($conversation->user_id !== Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthorized',
+                ], 403);
+            }
+        } catch (\Exception $e) {
+            Log::error('Validation error in sendMessage: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => 'Unauthorized',
-            ], 403);
+                'error' => 'Invalid request parameters',
+            ], 400);
         }
 
         try {
             // Save user message to database
             $userMessage = Message::create([
                 'conversation_id' => $conversationId,
-                'content' => $message,
+                'content' => $this->cleanUTF8($message),
                 'role' => 'user',
             ]);
 
@@ -63,7 +98,7 @@ class ChatController extends Controller
             // Save assistant response to database
             $assistantMessage = Message::create([
                 'conversation_id' => $conversationId,
-                'content' => $response,
+                'content' => $this->cleanUTF8($response),
                 'role' => 'assistant',
             ]);
 
@@ -71,11 +106,11 @@ class ChatController extends Controller
                 'success' => true,
                 'message' => [
                     'id' => $assistantMessage->id,
-                    'content' => $response,
+                    'content' => $this->cleanUTF8($response),
                     'role' => 'assistant',
-                    'timestamp' => $assistantMessage->created_at->toISOString(),
+                    'timestamp' => $assistantMessage->created_at->format('c'),
                 ],
-                'conversation_title' => $conversation->fresh()->title,
+                'conversation_title' => $this->cleanUTF8($conversation->fresh()->title),
             ]);
         } catch (\Exception $e) {
             Log::error('Chat error: ' . $e->getMessage());
@@ -86,7 +121,7 @@ class ChatController extends Controller
             // Save fallback response to database
             $assistantMessage = Message::create([
                 'conversation_id' => $conversationId,
-                'content' => $fallbackResponse,
+                'content' => $this->cleanUTF8($fallbackResponse),
                 'role' => 'assistant',
             ]);
             
@@ -94,14 +129,20 @@ class ChatController extends Controller
                 'success' => true,
                 'message' => [
                     'id' => $assistantMessage->id,
-                    'content' => $fallbackResponse,
+                    'content' => $this->cleanUTF8($fallbackResponse),
                     'role' => 'assistant',
-                    'timestamp' => $assistantMessage->created_at->toISOString(),
+                    'timestamp' => $assistantMessage->created_at->format('c'),
                 ],
                 'fallback' => true,
-                'error_message' => $e->getMessage(),
-                'conversation_title' => $conversation->fresh()->title,
+                'error_message' => $this->cleanUTF8($e->getMessage()),
+                'conversation_title' => $this->cleanUTF8($conversation->fresh()->title),
             ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in sendMessage: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Internal server error',
+            ], 500);
         }
     }
 
@@ -240,63 +281,100 @@ class ChatController extends Controller
 
     public function getConversations(Request $request): JsonResponse
     {
-        $conversations = Auth::user()->conversations()
-            ->orderBy('updated_at', 'desc')
-            ->with('messages')
-            ->get()
-            ->map(function ($conversation) {
-                return [
-                    'id' => $conversation->id,
-                    'title' => $conversation->title,
-                    'created_at' => $conversation->created_at->toISOString(),
-                    'updated_at' => $conversation->updated_at->toISOString(),
-                    'messages' => $conversation->messages->map(function ($message) {
-                        return [
-                            'id' => $message->id,
-                            'content' => $message->content,
-                            'role' => $message->role,
-                            'timestamp' => $message->created_at->toISOString(),
-                        ];
-                    }),
-                ];
-            });
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthenticated',
+                    'conversations' => [],
+                ], 401);
+            }
 
-        return response()->json([
-            'conversations' => $conversations,
-        ]);
+            $conversations = $user->conversations()
+                ->orderBy('updated_at', 'desc')
+                ->with('messages')
+                ->get()
+                ->map(function ($conversation) {
+                    return [
+                        'id' => $conversation->id,
+                        'title' => $this->cleanUTF8($conversation->title),
+                        'created_at' => $conversation->created_at->format('c'),
+                        'updated_at' => $conversation->updated_at->format('c'),
+                        'messages' => $conversation->messages->map(function ($message) {
+                            return [
+                                'id' => $message->id,
+                                'content' => $this->cleanUTF8($message->content),
+                                'role' => $message->role,
+                                'timestamp' => $message->created_at->format('c'),
+                            ];
+                        }),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'conversations' => $conversations,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getConversations: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Internal server error',
+                'conversations' => [],
+            ], 500);
+        }
     }
 
     public function getConversation(Request $request, int $id): JsonResponse
     {
-        $conversation = Conversation::with('messages')
-            ->where('id', $id)
-            ->where('user_id', Auth::id())
-            ->first();
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthenticated',
+                ], 401);
+            }
 
-        if (!$conversation) {
+            $conversation = Conversation::with('messages')
+                ->where('id', $id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$conversation) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Conversation not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'conversation' => [
+                    'id' => $conversation->id,
+                    'title' => $this->cleanUTF8($conversation->title),
+                    'created_at' => $conversation->created_at->format('c'),
+                    'updated_at' => $conversation->updated_at->format('c'),
+                    'messages' => $conversation->messages->map(function ($message) {
+                        return [
+                            'id' => $message->id,
+                            'content' => $this->cleanUTF8($message->content),
+                            'role' => $message->role,
+                            'timestamp' => $message->created_at->format('c'),
+                        ];
+                    }),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getConversation: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => 'Conversation not found',
-            ], 404);
+                'error' => 'Internal server error',
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'conversation' => [
-                'id' => $conversation->id,
-                'title' => $conversation->title,
-                'created_at' => $conversation->created_at->toISOString(),
-                'updated_at' => $conversation->updated_at->toISOString(),
-                'messages' => $conversation->messages->map(function ($message) {
-                    return [
-                        'id' => $message->id,
-                        'content' => $message->content,
-                        'role' => $message->role,
-                        'timestamp' => $message->created_at->toISOString(),
-                    ];
-                }),
-            ],
-        ]);
     }
 
     public function showConversation(Request $request, int $conversation_id)
@@ -316,25 +394,42 @@ class ChatController extends Controller
 
     public function createConversation(Request $request): JsonResponse
     {
-        $request->validate([
-            'title' => 'nullable|string|max:100',
-        ]);
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthenticated',
+                ], 401);
+            }
 
-        $conversation = Conversation::create([
-            'user_id' => Auth::id(),
-            'title' => $request->input('title', 'New Chat'),
-        ]);
+            $request->validate([
+                'title' => 'nullable|string|max:100',
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'conversation' => [
-                'id' => $conversation->id,
-                'title' => $conversation->title,
-                'created_at' => $conversation->created_at->toISOString(),
-                'updated_at' => $conversation->updated_at->toISOString(),
-                'messages' => [],
-            ],
-        ]);
+            $conversation = Conversation::create([
+                'user_id' => $user->id,
+                'title' => $request->input('title', 'New Chat'),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'conversation' => [
+                    'id' => $conversation->id,
+                    'title' => $this->cleanUTF8($conversation->title),
+                    'created_at' => $conversation->created_at->format('c'),
+                    'updated_at' => $conversation->updated_at->format('c'),
+                    'messages' => [],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in createConversation: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Internal server error',
+            ], 500);
+        }
     }
 
     public function updateConversationTitle(Request $request, int $id): JsonResponse
@@ -362,7 +457,7 @@ class ChatController extends Controller
             'conversation' => [
                 'id' => $conversation->id,
                 'title' => $conversation->title,
-                'updated_at' => $conversation->updated_at->toISOString(),
+                'updated_at' => $conversation->updated_at->format('c'),
             ],
         ]);
     }

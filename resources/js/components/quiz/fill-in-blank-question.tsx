@@ -39,8 +39,8 @@ export default function FillInBlankQuestion({
         
         const userAnswer = blank.case_sensitive ? answer[blank.id] : answer[blank.id].toLowerCase();
         const correctAnswers = blank.case_sensitive 
-            ? blank.correct_answers 
-            : blank.correct_answers.map(a => a.toLowerCase());
+            ? (blank.correct_answers || [])
+            : (blank.correct_answers || []).map(a => a.toLowerCase());
         
         return correctAnswers.includes(userAnswer);
     };
@@ -65,7 +65,7 @@ export default function FillInBlankQuestion({
             );
             
             if (i < parts.length - 1) {
-                const blank = question.blanks[i];
+                const blank = (question.blanks || [])[i];
                 if (blank) {
                     result.push(
                         <span key={`blank-${i}`} className="relative inline-block">
@@ -106,9 +106,9 @@ export default function FillInBlankQuestion({
                     <CardContent className="p-4">
                         <h4 className="font-medium mb-2">Correct Answers:</h4>
                         <div className="space-y-1">
-                            {question.blanks.map((blank, index) => (
+                            {(question.blanks || []).map((blank, index) => (
                                 <div key={blank.id} className="text-sm">
-                                    <strong>Blank {index + 1}:</strong> {blank.correct_answers.join(', ')}
+                                    <strong>Blank {index + 1}:</strong> {(blank.correct_answers || []).join(', ')}
                                     {!blank.case_sensitive && (
                                         <span className="text-muted-foreground ml-2">(Case insensitive)</span>
                                     )}

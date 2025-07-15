@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ interface Quiz {
 }
 
 export default function QuizGenerationModal({ conversationId, onClose }: QuizGenerationModalProps) {
+    const { t } = useTranslation();
     const [isGenerating, setIsGenerating] = useState(false);
     const [questionTypes, setQuestionTypes] = useState<QuestionType[]>([]);
     const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<string[]>(['multiple_choice', 'true_false', 'short_answer']);
@@ -66,9 +68,35 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
         );
     };
 
+    const getQuestionTypeLabel = (type: string) => {
+        const typeMap: { [key: string]: string } = {
+            'multiple_choice': 'multipleChoice',
+            'true_false': 'trueFalse',
+            'short_answer': 'shortAnswer',
+            'essay': 'essay',
+            'fill_in_blank': 'fillInBlank',
+            'matching': 'matching',
+            'ordering': 'ordering'
+        };
+        return t(`quiz.questionType.${typeMap[type] || type}`);
+    };
+
+    const getQuestionTypeDescription = (type: string) => {
+        const typeMap: { [key: string]: string } = {
+            'multiple_choice': 'multipleChoice',
+            'true_false': 'trueFalse',
+            'short_answer': 'shortAnswer',
+            'essay': 'essay',
+            'fill_in_blank': 'fillInBlank',
+            'matching': 'matching',
+            'ordering': 'ordering'
+        };
+        return t(`quiz.questionTypeDescription.${typeMap[type] || type}`);
+    };
+
     const generateQuiz = async () => {
         if (selectedQuestionTypes.length === 0) {
-            setError('Please select at least one question type');
+            setError(t('quiz.errors.selectQuestionType'));
             return;
         }
 
@@ -95,10 +123,10 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
             if (data.success) {
                 setGeneratedQuiz(data.quiz);
             } else {
-                setError(data.error || 'Failed to generate quiz');
+                setError(data.error || t('quiz.errors.generateFailed'));
             }
         } catch (error) {
-            setError('An error occurred while generating the quiz');
+            setError(t('quiz.errors.generateFailed'));
             console.error('Quiz generation error:', error);
         } finally {
             setIsGenerating(false);
@@ -134,9 +162,9 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Generate Quiz from Conversation</DialogTitle>
+                    <DialogTitle>{t('quiz.generateFromConversation')}</DialogTitle>
                     <DialogDescription>
-                        Create a quiz based on the content of this conversation
+                        {t('quiz.generateQuizDescription')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -144,7 +172,7 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                     <div className="space-y-6">
                         {/* Question Count */}
                         <div className="space-y-2">
-                            <Label htmlFor="question-count">Number of Questions</Label>
+                            <Label htmlFor="question-count">{t('quiz.questionCount')}</Label>
                             <Input
                                 id="question-count"
                                 type="number"
@@ -158,36 +186,36 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
 
                         {/* Difficulty */}
                         <div className="space-y-2">
-                            <Label htmlFor="difficulty">Difficulty Level</Label>
+                            <Label htmlFor="difficulty">{t('quiz.difficulty')}</Label>
                             <Select value={difficulty} onValueChange={setDifficulty}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select difficulty" />
+                                    <SelectValue placeholder={t('quiz.difficulty')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="easy">Easy</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="hard">Hard</SelectItem>
+                                    <SelectItem value="easy">{t('quiz.difficulty.easy')}</SelectItem>
+                                    <SelectItem value="medium">{t('quiz.difficulty.medium')}</SelectItem>
+                                    <SelectItem value="hard">{t('quiz.difficulty.hard')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Language */}
                         <div className="space-y-2">
-                            <Label htmlFor="language">Language</Label>
+                            <Label htmlFor="language">{t('quiz.language')}</Label>
                             <Select value={language} onValueChange={setLanguage}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select language" />
+                                    <SelectValue placeholder={t('quiz.language')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Japanese">Japanese (日本語)</SelectItem>
-                                    <SelectItem value="English">English</SelectItem>
+                                    <SelectItem value="Japanese">{t('quiz.language.japanese')}</SelectItem>
+                                    <SelectItem value="English">{t('quiz.language.english')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Question Types */}
                         <div className="space-y-2">
-                            <Label>Question Types</Label>
+                            <Label>{t('quiz.questionTypes')}</Label>
                             <div className="grid grid-cols-1 gap-3">
                                 {questionTypes.map((type) => (
                                     <div key={type.value} className="flex items-start space-x-2">
@@ -201,10 +229,10 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                                                 htmlFor={type.value}
                                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                             >
-                                                {type.label}
+                                                {getQuestionTypeLabel(type.value)}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                {type.description}
+                                                {getQuestionTypeDescription(type.value)}
                                             </p>
                                         </div>
                                     </div>
@@ -220,7 +248,7 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
 
                         <div className="flex justify-end space-x-2">
                             <Button variant="outline" onClick={onClose}>
-                                Cancel
+                                {t('common.cancel')}
                             </Button>
                             <Button 
                                 onClick={generateQuiz} 
@@ -229,12 +257,12 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                                 {isGenerating ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Generating...
+                                        {t('quiz.generating')}
                                     </>
                                 ) : (
                                     <>
                                         <FileText className="mr-2 h-4 w-4" />
-                                        Generate Quiz
+                                        {t('quiz.generateQuiz')}
                                     </>
                                 )}
                             </Button>
@@ -250,16 +278,16 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                             <CardContent>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <span className="font-medium">Difficulty:</span> {generatedQuiz.difficulty}
+                                        <span className="font-medium">{t('quiz.difficulty')}:</span> {generatedQuiz.difficulty}
                                     </div>
                                     <div>
-                                        <span className="font-medium">Questions:</span> {generatedQuiz.questions_count}
+                                        <span className="font-medium">{t('quiz.questions')}:</span> {generatedQuiz.questions_count}
                                     </div>
                                     <div>
-                                        <span className="font-medium">Estimated Time:</span> {generatedQuiz.estimated_time} min
+                                        <span className="font-medium">{t('quiz.estimatedTime')}:</span> {generatedQuiz.estimated_time} {t('quiz.minutes')}
                                     </div>
                                     <div>
-                                        <span className="font-medium">Total Points:</span> {generatedQuiz.total_points}
+                                        <span className="font-medium">{t('quiz.points')}:</span> {generatedQuiz.total_points}
                                     </div>
                                 </div>
                             </CardContent>
@@ -274,7 +302,7 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                                     className="gap-2"
                                 >
                                     <Download className="h-4 w-4" />
-                                    Export JSON
+                                    {t('quiz.exportJson')}
                                 </Button>
                                 <Button 
                                     variant="outline" 
@@ -283,15 +311,15 @@ export default function QuizGenerationModal({ conversationId, onClose }: QuizGen
                                     className="gap-2"
                                 >
                                     <Download className="h-4 w-4" />
-                                    Export YAML
+                                    {t('quiz.exportYaml')}
                                 </Button>
                             </div>
                             <div className="flex space-x-2">
                                 <Button variant="outline" onClick={onClose}>
-                                    Close
+                                    {t('common.close')}
                                 </Button>
                                 <Button onClick={viewQuiz}>
-                                    View Quiz
+                                    {t('quiz.viewQuiz')}
                                 </Button>
                             </div>
                         </div>

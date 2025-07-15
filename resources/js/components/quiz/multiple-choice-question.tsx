@@ -64,7 +64,7 @@ export default function MultipleChoiceQuestion({
             <h3 className="text-lg font-medium">{question.question}</h3>
             
             <div className="space-y-3">
-                {question.options.map((option) => (
+                {(question.options || []).map((option) => (
                     <Card 
                         key={option.id} 
                         className={`cursor-pointer transition-colors ${getOptionClass(option)}`}

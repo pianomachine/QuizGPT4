@@ -89,6 +89,8 @@ Use these question types: {$typesString}
 Conversation:
 {$conversationText}
 
+For matching questions, ensure you create left_items and right_items arrays with proper IDs and text, and correct_matches array to show which left items match which right items.
+
 Generate a JSON response with the following structure:
 {
     \"title\": \"Quiz title based on conversation topic\",
@@ -122,6 +124,55 @@ Generate a JSON response with the following structure:
             \"question\": \"Question text\",
             \"correct_answers\": [\"answer1\", \"answer2\"],
             \"case_sensitive\": false,
+            \"explanation\": \"Explanation\",
+            \"points\": 1
+        },
+        {
+            \"id\": \"q4\",
+            \"type\": \"matching\",
+            \"question\": \"Match the following items\",
+            \"left_items\": [
+                {\"id\": \"l1\", \"text\": \"Left item 1\"},
+                {\"id\": \"l2\", \"text\": \"Left item 2\"},
+                {\"id\": \"l3\", \"text\": \"Left item 3\"}
+            ],
+            \"right_items\": [
+                {\"id\": \"r1\", \"text\": \"Right item 1\"},
+                {\"id\": \"r2\", \"text\": \"Right item 2\"},
+                {\"id\": \"r3\", \"text\": \"Right item 3\"}
+            ],
+            \"correct_matches\": [
+                {\"left_id\": \"l1\", \"right_id\": \"r1\"},
+                {\"left_id\": \"l2\", \"right_id\": \"r2\"},
+                {\"left_id\": \"l3\", \"right_id\": \"r3\"}
+            ],
+            \"explanation\": \"Explanation\",
+            \"points\": 1
+        },
+        {
+            \"id\": \"q5\",
+            \"type\": \"ordering\",
+            \"question\": \"Put the following items in the correct order\",
+            \"items\": [
+                {\"id\": \"i1\", \"text\": \"Item 1\", \"correct_order\": 1},
+                {\"id\": \"i2\", \"text\": \"Item 2\", \"correct_order\": 2},
+                {\"id\": \"i3\", \"text\": \"Item 3\", \"correct_order\": 3}
+            ],
+            \"explanation\": \"Explanation\",
+            \"points\": 1
+        },
+        {
+            \"id\": \"q6\",
+            \"type\": \"fill_in_blank\",
+            \"question\": \"Complete the sentence: The capital of Japan is {blank}\",
+            \"blanks\": [
+                {
+                    \"id\": \"b1\",
+                    \"position\": 1,
+                    \"correct_answers\": [\"Tokyo\"],
+                    \"case_sensitive\": false
+                }
+            ],
             \"explanation\": \"Explanation\",
             \"points\": 1
         }

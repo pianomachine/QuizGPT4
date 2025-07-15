@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface LeftItem {
     id: string;
@@ -39,8 +40,25 @@ export default function MatchingQuestion({
     onAnswerChange,
     showResults
 }: MatchingQuestionProps) {
+    const { t } = useTranslation();
     const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
     const [selectedRight, setSelectedRight] = useState<string | null>(null);
+
+    // Handle legacy data - if the question doesn't have the required fields, show an error message
+    const hasRequiredData = question.left_items && question.right_items && question.correct_matches;
+    
+    if (!hasRequiredData) {
+        return (
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">{question.question}</h3>
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                        {t('quiz.errors.invalidMatchingQuestion')}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const handleLeftClick = (leftId: string) => {
         if (showResults) return;
@@ -73,7 +91,7 @@ export default function MatchingQuestion({
     };
 
     const isMatchCorrect = (leftId: string) => {
-        if (!answer || !answer[leftId]) return null;
+        if (!answer || !answer[leftId] || !question.correct_matches) return null;
         
         const correctMatch = question.correct_matches.find(match => match.left_id === leftId);
         return correctMatch?.right_id === answer[leftId];
@@ -125,8 +143,8 @@ export default function MatchingQuestion({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Items */}
                 <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Items to Match</h4>
-                    {question.left_items.map((item) => (
+                    <h4 className="font-medium text-sm">{t('quiz.answers.itemsToMatch')}</h4>
+                    {(question.left_items || []).map((item) => (
                         <Card
                             key={item.id}
                             className={`cursor-pointer transition-colors ${getLeftItemClass(item.id)}`}
@@ -138,7 +156,7 @@ export default function MatchingQuestion({
                                     <div className="flex items-center gap-2">
                                         {answer && answer[item.id] && (
                                             <span className="text-xs text-muted-foreground">
-                                                → {question.right_items.find(r => r.id === answer[item.id])?.text}
+                                                → {(question.right_items || []).find(r => r.id === answer[item.id])?.text}
                                             </span>
                                         )}
                                         {getMatchIcon(item.id)}
@@ -164,8 +182,8 @@ export default function MatchingQuestion({
 
                 {/* Right Items */}
                 <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Matches</h4>
-                    {question.right_items.map((item) => (
+                    <h4 className="font-medium text-sm">{t('quiz.answers.matches')}</h4>
+                    {(question.right_items || []).map((item) => (
                         <Card
                             key={item.id}
                             className={`cursor-pointer transition-colors ${getRightItemClass(item.id)}`}
@@ -182,11 +200,11 @@ export default function MatchingQuestion({
             {showResults && (
                 <Card className="bg-gray-50 dark:bg-gray-800">
                     <CardContent className="p-4">
-                        <h4 className="font-medium mb-2">Correct Matches:</h4>
+                        <h4 className="font-medium mb-2">{t('quiz.answers.correctMatches')}:</h4>
                         <div className="space-y-1">
-                            {question.correct_matches.map((match) => {
-                                const leftItem = question.left_items.find(item => item.id === match.left_id);
-                                const rightItem = question.right_items.find(item => item.id === match.right_id);
+                            {(question.correct_matches || []).map((match) => {
+                                const leftItem = (question.left_items || []).find(item => item.id === match.left_id);
+                                const rightItem = (question.right_items || []).find(item => item.id === match.right_id);
                                 return (
                                     <div key={match.left_id} className="text-sm">
                                         <strong>{leftItem?.text}</strong> → {rightItem?.text}
@@ -202,7 +220,7 @@ export default function MatchingQuestion({
                 <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                     <CardContent className="p-4">
                         <p className="text-sm">
-                            <strong>Explanation:</strong> {question.explanation}
+                            <strong>{t('quiz.answers.explanation')}:</strong> {question.explanation}
                         </p>
                     </CardContent>
                 </Card>

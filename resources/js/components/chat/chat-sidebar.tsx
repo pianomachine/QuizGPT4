@@ -3,6 +3,7 @@ import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, Side
 import { MessageSquare, Edit3, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
     id: string;
@@ -34,6 +35,7 @@ export function ChatSidebar({
     onDeleteConversation,
     onUpdateConversationTitle
 }: ChatSidebarProps) {
+    const { t } = useTranslation();
     const [editingId, setEditingId] = useState<string | number | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
 
@@ -65,7 +67,7 @@ export function ChatSidebar({
 
     return (
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>Chat</SidebarGroupLabel>
+            <SidebarGroupLabel>{t('navigation.conversations')}</SidebarGroupLabel>
             <SidebarGroupContent>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -76,7 +78,7 @@ export function ChatSidebar({
                             size="sm"
                         >
                             <MessageSquare className="h-4 w-4" />
-                            New Chat
+                            {t('navigation.newChat')}
                         </Button>
                     </SidebarMenuItem>
                     {conversations.map(conversation => (
@@ -123,14 +125,14 @@ export function ChatSidebar({
                                                 className="gap-2"
                                             >
                                                 <Edit3 className="h-4 w-4" />
-                                                Edit title
+                                                {t('chat.editTitle')}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem 
                                                 onClick={() => onDeleteConversation(conversation.id)}
                                                 className="gap-2 text-red-600 hover:text-red-700"
                                             >
                                                 <Trash2 className="h-4 w-4" />
-                                                Delete conversation
+                                                {t('chat.deleteConversation')}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>

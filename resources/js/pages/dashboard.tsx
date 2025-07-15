@@ -51,9 +51,29 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
                 }
             });
 
+            // Check if response is ok
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    // Authentication/authorization error - redirect to login
+                    window.location.href = '/login';
+                    return;
+                } else if (response.status === 500) {
+                    // Server error - show error message
+                    console.error('Server error loading conversations');
+                    return;
+                }
+            }
+
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Response is not JSON:', await response.text());
+                return;
+            }
+
             const data = await response.json();
             
-            if (data.conversations) {
+            if (data.success && data.conversations) {
                 const formattedConversations = data.conversations.map((conv: any) => ({
                     id: conv.id,
                     title: conv.title,
@@ -88,7 +108,8 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
                 }
                 
                 // Set current conversation to first one if none selected
-                if (formattedConversations.length > 0 && !currentConversationId) {
+                // Only auto-select if we have a conversation_id from URL
+                if (formattedConversations.length > 0 && !currentConversationId && conversation_id) {
                     setCurrentConversationId(formattedConversations[0].id);
                     router.visit(`/chat/${formattedConversations[0].id}`, { 
                         preserveState: true, 
@@ -96,8 +117,8 @@ export default function Dashboard({ conversation_id }: DashboardProps) {
                     });
                 }
                 
-                // Create a new conversation if none exist
-                if (formattedConversations.length === 0) {
+                // Create a new conversation if none exist AND we have a conversation_id from URL
+                if (formattedConversations.length === 0 && conversation_id) {
                     await createInitialConversation();
                 }
             }

@@ -6,6 +6,7 @@ import { Send, User, Bot, FileText } from 'lucide-react';
 import TypingAnimation from './typing-animation';
 import ThinkingAnimation from './thinking-animation';
 import QuizGenerationModal from './quiz-generation-modal';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
     id: string | number;
@@ -35,6 +36,7 @@ export default function ChatInterface({
     onCurrentConversationChange,
     onNewConversation 
 }: ChatInterfaceProps) {
+    const { t } = useTranslation();
     const [inputMessage, setInputMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
@@ -53,6 +55,14 @@ export default function ChatInterface({
     useEffect(() => {
         scrollToBottom();
     }, [currentConversation?.messages]);
+
+    // Reset animation states when conversation changes
+    useEffect(() => {
+        setIsTyping(false);
+        setIsThinking(false);
+        setCurrentResponseText('');
+        setIsTransitioning(false);
+    }, [currentConversationId]);
 
     const handleSendMessage = async () => {
         if (!inputMessage.trim()) return;
@@ -117,6 +127,22 @@ export default function ChatInterface({
                 })
             });
 
+            // Check if response is ok
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    // Authentication/authorization error - redirect to login
+                    window.location.href = '/login';
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned non-JSON response');
+            }
+
             const data = await response.json();
 
             if (data.success) {
@@ -164,9 +190,29 @@ export default function ChatInterface({
                 }
             });
 
+            // Check if response is ok
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    // Authentication/authorization error - redirect to login
+                    window.location.href = '/login';
+                    return;
+                } else if (response.status === 500) {
+                    // Server error - show error message
+                    console.error('Server error refreshing conversations');
+                    return;
+                }
+            }
+
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Response is not JSON:', await response.text());
+                return;
+            }
+
             const data = await response.json();
             
-            if (data.conversations) {
+            if (data.success && data.conversations) {
                 const formattedConversations = data.conversations.map((conv: any) => ({
                     id: conv.id,
                     title: conv.title,
@@ -208,7 +254,7 @@ export default function ChatInterface({
                     onClick={() => setShowQuizModal(true)}
                     style={{ display: 'none' }}
                 >
-                    Hidden Quiz Button
+                    {t('chat.generateQuiz')}
                 </Button>
                 
                 {/* Messages or Center Input */}
@@ -216,80 +262,84 @@ export default function ChatInterface({
                     <>
                         {/* Messages */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {currentConversation?.messages.map((message, index) => (
-                                <div
-                                    key={message.id}
-                                    className={`flex gap-3 ${
-                                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                                    }`}
-                                >
-                                    {message.role === 'assistant' && (
-                                        <Avatar className="h-8 w-8 flex-shrink-0">
-                                            <AvatarFallback>
-                                                <Bot className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                    
+                            <div className="max-w-4xl mx-auto space-y-4">
+                                {currentConversation?.messages.map((message, index) => (
                                     <div
-                                        className={`max-w-[70%] rounded-lg p-3 ${
-                                            message.role === 'user'
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-muted'
+                                        key={message.id}
+                                        className={`flex gap-3 ${
+                                            message.role === 'user' ? 'justify-end' : 'justify-start'
                                         }`}
                                     >
-                                        <p className="text-sm whitespace-pre-wrap">
-                                            {message.role === 'assistant' && 
-                                             index === currentConversation.messages.length - 1 && 
-                                             isTyping && 
-                                             currentResponseText ? (
-                                                <TypingAnimation 
-                                                    text={currentResponseText} 
-                                                    onComplete={handleTypingComplete} 
-                                                />
-                                            ) : (
-                                                message.content
-                                            )}
-                                        </p>
-                                        <span className="text-xs opacity-70 mt-1 block">
-                                            {message.timestamp.toLocaleTimeString()}
-                                        </span>
+                                        {message.role === 'assistant' && (
+                                            <Avatar className="h-8 w-8 flex-shrink-0">
+                                                <AvatarFallback>
+                                                    <Bot className="h-4 w-4" />
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        
+                                        <div
+                                            className={`max-w-[85%] rounded-lg p-3 ${
+                                                message.role === 'user'
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-muted'
+                                            }`}
+                                        >
+                                            <p className="text-sm whitespace-pre-wrap">
+                                                {message.role === 'assistant' && 
+                                                 index === currentConversation.messages.length - 1 && 
+                                                 isTyping && 
+                                                 currentResponseText ? (
+                                                    <TypingAnimation 
+                                                        text={currentResponseText} 
+                                                        onComplete={handleTypingComplete} 
+                                                    />
+                                                ) : (
+                                                    message.content
+                                                )}
+                                            </p>
+                                            <span className="text-xs opacity-70 mt-1 block">
+                                                {message.timestamp.toLocaleTimeString()}
+                                            </span>
+                                        </div>
+                                        
+                                        {message.role === 'user' && (
+                                            <Avatar className="h-8 w-8 flex-shrink-0">
+                                                <AvatarFallback>
+                                                    <User className="h-4 w-4" />
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        )}
                                     </div>
-                                    
-                                    {message.role === 'user' && (
-                                        <Avatar className="h-8 w-8 flex-shrink-0">
-                                            <AvatarFallback>
-                                                <User className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                </div>
-                            ))}
-                            
-                            {isThinking && <ThinkingAnimation />}
-                            
-                            <div ref={messagesEndRef} />
+                                ))}
+                                
+                                {isThinking && <ThinkingAnimation />}
+                                
+                                <div ref={messagesEndRef} />
+                            </div>
                         </div>
 
                         {/* Input Area - Bottom Position */}
                         <div className="border-t border-sidebar-border/70 dark:border-sidebar-border p-4 animate-slide-down">
-                            <div className="flex gap-2">
-                                <Input
-                                    ref={inputRef}
-                                    value={inputMessage}
-                                    onChange={(e) => setInputMessage(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder={isThinking ? "AI is thinking..." : isTyping ? "AI is typing..." : "Type your message..."}
-                                    className="flex-1"
-                                    disabled={isThinking || isTyping}
-                                />
-                                <Button
-                                    onClick={handleSendMessage}
-                                    disabled={!inputMessage.trim() || isThinking || isTyping}
-                                    size="icon"
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
+                            <div className="max-w-4xl mx-auto">
+                                <div className="flex gap-2">
+                                    <Input
+                                        ref={inputRef}
+                                        value={inputMessage}
+                                        onChange={(e) => setInputMessage(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder={isThinking ? t('common.loading') : isTyping ? t('common.loading') : t('chat.typeMessage')}
+                                        className="flex-1"
+                                        disabled={isThinking || isTyping}
+                                    />
+                                    <Button
+                                        onClick={handleSendMessage}
+                                        disabled={!inputMessage.trim() || isThinking || isTyping}
+                                        size="icon"
+                                    >
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </>
@@ -299,7 +349,7 @@ export default function ChatInterface({
                         <div className="w-full max-w-2xl space-y-6">
                             <div className="text-center">
                                 <h2 className="text-2xl font-semibold mb-2">
-                                    {isTransitioning ? "Starting conversation..." : "Start a new conversation"}
+                                    {isTransitioning ? t('chat.startingConversation') : t('chat.startConversation')}
                                 </h2>
                                 <p className="text-muted-foreground">
                                     {isTransitioning ? "Please wait while we set up your chat" : "Ask me anything to get started"}
@@ -311,7 +361,7 @@ export default function ChatInterface({
                                     value={inputMessage}
                                     onChange={(e) => setInputMessage(e.target.value)}
                                     onKeyPress={handleKeyPress}
-                                    placeholder={isTransitioning ? "Setting up..." : "Type your message..."}
+                                    placeholder={isTransitioning ? t('common.loading') : t('chat.typeMessage')}
                                     className="flex-1"
                                     disabled={isThinking || isTyping || isTransitioning}
                                 />

@@ -14,6 +14,7 @@ import EssayQuestion from '@/components/quiz/essay-question';
 import FillInBlankQuestion from '@/components/quiz/fill-in-blank-question';
 import MatchingQuestion from '@/components/quiz/matching-question';
 import OrderingQuestion from '@/components/quiz/ordering-question';
+import { useTranslation } from 'react-i18next';
 
 interface Quiz {
     id: number;
@@ -37,6 +38,7 @@ interface ShowQuizProps {
 }
 
 export default function ShowQuiz({ quiz }: ShowQuizProps) {
+    const { t } = useTranslation();
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [showResults, setShowResults] = useState(false);
@@ -80,6 +82,83 @@ export default function ShowQuiz({ quiz }: ShowQuizProps) {
 
     const submitQuiz = () => {
         setShowResults(true);
+    };
+
+    const calculateScore = () => {
+        let totalPoints = 0;
+        let earnedPoints = 0;
+
+        quiz.questions.forEach(question => {
+            const userAnswer = answers[question.id];
+            const questionPoints = question.points || 1;
+            totalPoints += questionPoints;
+
+            if (isAnswerCorrect(question, userAnswer)) {
+                earnedPoints += questionPoints;
+            }
+        });
+
+        return {
+            totalPoints,
+            earnedPoints,
+            percentage: totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0,
+            correctAnswers: quiz.questions.filter(q => isAnswerCorrect(q, answers[q.id])).length
+        };
+    };
+
+    const isAnswerCorrect = (question: any, userAnswer: any) => {
+        if (!userAnswer) return false;
+
+        switch (question.type) {
+            case 'multiple_choice':
+                return question.options?.some((option: any) => 
+                    option.id === userAnswer && option.is_correct
+                );
+            
+            case 'true_false':
+                return userAnswer === question.correct_answer;
+            
+            case 'short_answer':
+                if (!question.correct_answers) return false;
+                const normalizedAnswer = question.case_sensitive ? userAnswer : userAnswer.toLowerCase();
+                const correctAnswers = question.case_sensitive 
+                    ? question.correct_answers 
+                    : question.correct_answers.map((a: string) => a.toLowerCase());
+                return correctAnswers.includes(normalizedAnswer);
+            
+            case 'fill_in_blank':
+                if (!question.blanks) return false;
+                return question.blanks.every((blank: any) => {
+                    const userBlankAnswer = userAnswer[blank.id];
+                    if (!userBlankAnswer) return false;
+                    
+                    const normalizedAnswer = blank.case_sensitive ? userBlankAnswer : userBlankAnswer.toLowerCase();
+                    const correctAnswers = blank.case_sensitive 
+                        ? (blank.correct_answers || [])
+                        : (blank.correct_answers || []).map((a: string) => a.toLowerCase());
+                    return correctAnswers.includes(normalizedAnswer);
+                });
+            
+            case 'matching':
+                if (!question.correct_matches) return false;
+                return question.correct_matches.every((match: any) => {
+                    return userAnswer[match.left_id] === match.right_id;
+                });
+            
+            case 'ordering':
+                if (!question.items || !Array.isArray(userAnswer)) return false;
+                return question.items.every((item: any) => {
+                    const currentIndex = userAnswer.indexOf(item.id);
+                    return currentIndex !== -1 && currentIndex === item.correct_order - 1;
+                });
+            
+            case 'essay':
+                // Essays need manual grading, return false for now
+                return false;
+            
+            default:
+                return false;
+        }
     };
 
     const exportQuiz = async (format: 'json' | 'yaml') => {
@@ -139,6 +218,8 @@ export default function ShowQuiz({ quiz }: ShowQuizProps) {
     };
 
     if (showResults) {
+        const score = calculateScore();
+        
         return (
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title={`Quiz Results - ${quiz.title}`} />
@@ -147,36 +228,65 @@ export default function ShowQuiz({ quiz }: ShowQuizProps) {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Trophy className="h-5 w-5" />
-                                Quiz Complete!
+                                {t('quiz.answers.quizComplete')}
                             </CardTitle>
                             <CardDescription>
-                                You've completed the quiz "{quiz.title}"
+                                {t('quiz.answers.quizCompleteDescription', { title: quiz.title })}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Score Summary */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{quiz.questions.length}</div>
-                                    <div className="text-sm text-muted-foreground">Questions</div>
+                                    <div className="text-2xl font-bold text-blue-600">{score.percentage}%</div>
+                                    <div className="text-sm text-muted-foreground">{t('quiz.answers.score')}</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{quiz.total_points}</div>
-                                    <div className="text-sm text-muted-foreground">Total Points</div>
+                                    <div className="text-2xl font-bold">{score.correctAnswers}/{quiz.questions.length}</div>
+                                    <div className="text-sm text-muted-foreground">{t('quiz.answers.correct')}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold">{score.earnedPoints}/{score.totalPoints}</div>
+                                    <div className="text-sm text-muted-foreground">{t('quiz.answers.points')}</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-2xl font-bold">
                                         {Math.round((Date.now() - startTime) / 60000)}
                                     </div>
-                                    <div className="text-sm text-muted-foreground">Minutes</div>
+                                    <div className="text-sm text-muted-foreground">{t('quiz.answers.minutes')}</div>
                                 </div>
                             </div>
+                            
+                            {/* Score Bar */}
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div 
+                                    className={`h-3 rounded-full transition-all duration-300 ${
+                                        score.percentage >= 80 ? 'bg-green-500' :
+                                        score.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${score.percentage}%` }}
+                                />
+                            </div>
+                            
+                            {/* Performance Message */}
+                            <div className="text-center">
+                                <div className="text-lg font-medium">
+                                    {score.percentage >= 80 ? t('quiz.answers.excellentWork') :
+                                     score.percentage >= 60 ? t('quiz.answers.goodJob') : t('quiz.answers.keepPracticing')}
+                                </div>
+                                <div className="text-sm text-muted-foreground mt-1">
+                                    {score.percentage >= 80 ? t('quiz.answers.masteredTopic') :
+                                     score.percentage >= 60 ? t('quiz.answers.goodUnderstanding') : t('quiz.answers.reviewMaterial')}
+                                </div>
+                            </div>
+                            
                             <div className="flex justify-center gap-4">
                                 <Button onClick={() => setShowResults(false)} variant="outline">
-                                    Review Questions
+                                    {t('quiz.answers.reviewQuestions')}
                                 </Button>
                                 <Button asChild>
                                     <Link href={`/chat/${quiz.conversation.id}`}>
-                                        Back to Chat
+                                        {t('quiz.answers.backToChat')}
                                     </Link>
                                 </Button>
                             </div>
@@ -251,10 +361,10 @@ export default function ShowQuiz({ quiz }: ShowQuizProps) {
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-center mb-4">
                             <span className="text-sm font-medium">
-                                Question {currentQuestionIndex + 1} of {quiz.questions.length}
+                                {t('quiz.answers.questionProgress', { current: currentQuestionIndex + 1, total: quiz.questions.length })}
                             </span>
                             <span className="text-sm text-muted-foreground">
-                                {currentQuestion?.points || 1} point{(currentQuestion?.points || 1) > 1 ? 's' : ''}
+                                {currentQuestion?.points || 1} {(currentQuestion?.points || 1) > 1 ? t('quiz.answers.pointsPlural') : t('quiz.answers.pointsSingular')}
                             </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -280,17 +390,17 @@ export default function ShowQuiz({ quiz }: ShowQuizProps) {
                         onClick={prevQuestion}
                         disabled={currentQuestionIndex === 0}
                     >
-                        Previous
+                        {t('quiz.answers.previous')}
                     </Button>
                     
                     <div className="flex gap-2">
                         {currentQuestionIndex === quiz.questions.length - 1 ? (
                             <Button onClick={submitQuiz}>
-                                Submit Quiz
+                                {t('quiz.answers.submitQuiz')}
                             </Button>
                         ) : (
                             <Button onClick={nextQuestion}>
-                                Next
+                                {t('quiz.answers.next')}
                             </Button>
                         )}
                     </div>

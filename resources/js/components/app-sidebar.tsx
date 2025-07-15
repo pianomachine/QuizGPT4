@@ -6,14 +6,14 @@ import { QuizSidebar } from '@/components/quiz/quiz-sidebar';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, FileText } from 'lucide-react';
+import { BookOpen, Folder, MessageSquare, FileText } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'New Chat',
         href: '/dashboard',
-        icon: LayoutGrid,
+        icon: MessageSquare,
     },
     {
         title: 'Quizzes',

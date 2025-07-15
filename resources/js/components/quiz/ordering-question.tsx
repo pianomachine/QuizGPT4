@@ -35,7 +35,7 @@ export default function OrderingQuestion({
             setOrderedItems(answer);
         } else {
             // Initialize with shuffled items
-            const shuffled = [...question.items]
+            const shuffled = [...(question.items || [])]
                 .sort(() => Math.random() - 0.5)
                 .map(item => item.id);
             setOrderedItems(shuffled);
@@ -67,7 +67,7 @@ export default function OrderingQuestion({
     };
 
     const isItemCorrect = (itemId: string, currentPosition: number) => {
-        const item = question.items.find(i => i.id === itemId);
+        const item = (question.items || []).find(i => i.id === itemId);
         return item ? item.correct_order === currentPosition + 1 : false;
     };
 
@@ -94,7 +94,7 @@ export default function OrderingQuestion({
     };
 
     const getItemText = (itemId: string) => {
-        const item = question.items.find(i => i.id === itemId);
+        const item = (question.items || []).find(i => i.id === itemId);
         return item ? item.text : '';
     };
 
@@ -152,7 +152,7 @@ export default function OrderingQuestion({
                     <CardContent className="p-4">
                         <h4 className="font-medium mb-2">Correct Order:</h4>
                         <div className="space-y-1">
-                            {question.items
+                            {(question.items || [])
                                 .sort((a, b) => a.correct_order - b.correct_order)
                                 .map((item, index) => (
                                     <div key={item.id} className="text-sm">
